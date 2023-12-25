@@ -1,25 +1,25 @@
 const express = require('express')
 const app = express()
 const cors = require('cors')
-const jwt = require('jsonwebtoken')
-const cookieParser = require('cookie-parser')
+// const jwt = require('jsonwebtoken')
+// const cookieParser = require('cookie-parser')
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 
 const port = process.env.PORT || 5000
 
 app.use(cors({
     origin: [
-        // 'http://localhost:5173',
-        'https://task-management-c7431.web.app',
-        'https://task-management-c7431.firebaseapp.com'
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'https://task-management-c7431.web.app'
     ],
     credentials: true,
 }
 ))
 app.use(express.json())
-app.use(cookieParser())
+// app.use(cookieParser())
 
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.1i934d1.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -34,61 +34,61 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        // await client.connect();
+        await client.connect();
 
         const taskCollection = client.db("taskManagement").collection("tasks")
         const userCollection = client.db("taskManagement").collection("users")
         
-        // jwt api
-        app.post('/jwt', async (req, res) => {
-            const user = req.body
-            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
-            res.send({ token })
-        })
 
-        // middlewares
-        const verifyToken = (req, res, next) => {
-            console.log(req.headers.authorization)
-            if (!req.headers.authorization) {
-                return res.status(401).send({ message: "unauthorized access" })
+       
+        
+        app.post('/users', async (req, res) => {
+            try {
+                const item = req.body
+                const result = await userCollection.insertOne(item)
+                res.send(result)
+            } catch (error) {
+                res.send(error)
             }
-            const token = req.headers.authorization.split(' ')[1]
-            jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-                if (err) {
-                    return res.status(401).send({ message: "unauthorized access" })
-                }
-                req.decoded = decoded
-                next()
-            })
-        }
-
-        // task related api
-        app.post('/tasks', verifyToken, async (req, res) => {
-            const item = req.body
-            const result = await taskCollection.insertOne(item)
-            res.send(result)
+        })
+        app.post('/tasks', async (req, res) => {
+            try {
+                const item = req.body
+                const result = await taskCollection.insertOne(item)
+                res.send(result)
+            } catch (error) {
+                res.send(error)
+            }
         })
 
-        app.get('/allTask', verifyToken, async (req, res) => {
+        app.get('/tasks',  async (req, res) => {
 
-            const result = await taskCollection.find().toArray()
-            console.log(result);
-            res.send(result)
+            try {
+                const result = await taskCollection.find().toArray()
+                console.log(result);
+                res.send(result)
+            } catch (error) {
+                res.send(error)
+            }
         })
 
-        app.get('/allTask/:id', async (req, res) => {
-            const id = req.params.id
-            const query = { _id: new ObjectId(id) }
-            const result = await taskCollection.findOne(query)
-            res.send(result)
+        app.get('/tasks/:id', async (req, res) => {
+            try {
+                const id = req.params.id
+                const query = { _id: new ObjectId(id) }
+                const result = await taskCollection.findOne(query)
+                res.send(result)
+            } catch (error) {
+                res.send(error)
+            }
         })
 
 
 
 
         // Send a ping to confirm a successful connection
-        // await client.db("admin").command({ ping: 1 });
-        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        await client.db("admin").command({ ping: 1 });
+        console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
